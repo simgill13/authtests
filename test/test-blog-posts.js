@@ -53,7 +53,7 @@ function seedBlogPostData() {
       content: faker.lorem.text()
     });
   }
-  
+
   return BlogPost.insertMany(seedData);
 }
 
@@ -70,7 +70,7 @@ describe('blog posts API resource', function() {
   });
 
   afterEach(function() {
-  
+
     return tearDownDb();
   });
 
@@ -81,7 +81,7 @@ describe('blog posts API resource', function() {
   describe('GET endpoint', function() {
 
     it('should return all existing posts', function() {
-    
+
       let res;
       return chai.request(app)
 
@@ -89,19 +89,19 @@ describe('blog posts API resource', function() {
         .then(_res => {
           res = _res;
           res.should.have.status(200);
-          
+
           res.body.should.have.length.of.at.least(1);
 
           return BlogPost.count();
         })
         .then(count => {
-        
+
           res.body.should.have.length.of(count);
         });
     });
 
     it('should return posts with right fields', function() {
-     
+
 
       let resPost;
       return chai.request(app)
@@ -117,7 +117,7 @@ describe('blog posts API resource', function() {
             post.should.be.a('object');
             post.should.include.keys('id', 'title', 'content', 'author', 'created');
           });
-       
+
           resPost = res.body[0];
           return BlogPost.findById(resPost.id).exec();
         })
@@ -139,12 +139,8 @@ describe('blog posts API resource', function() {
 //===========================This is it =============================================
 
 
-
-
-
-
   describe('POST endpoint', function() {
- 
+
     it('should add a new blog post', function() {
 
       const newPost = {
@@ -155,10 +151,9 @@ describe('blog posts API resource', function() {
           },
           content: faker.lorem.text()
       };
-      console.log(testuser.username, testuser.textPassword);
       return chai.request(app)
         .post('/posts')
-        .auth("james", "james")
+        .auth('james', 'james')
         .send(newPost)
         .then(function(res) {
           res.should.have.status(201);
@@ -205,9 +200,9 @@ describe('blog posts API resource', function() {
 //==================================DELETE=======================================
 
 
-  describe.only('PUT endpoint', function() {
+  describe('PUT endpoint', function() {
 
-   
+
     it('should update fields you send over', function() {
       const updateData = {
         title: 'cats cats cats',
@@ -249,27 +244,6 @@ describe('blog posts API resource', function() {
     });
   });
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   describe('DELETE endpoint', function() {
     // strategy:
     //  1. get a post
@@ -285,7 +259,9 @@ describe('blog posts API resource', function() {
         .exec()
         .then(_post => {
           post = _post;
-          return chai.request(app).delete(`/posts/${post.id}`);
+          return chai.request(app)
+          .delete(`/posts/${post.id}`)
+          .auth("james", "james")
         })
         .then(res => {
           res.should.have.status(204);
