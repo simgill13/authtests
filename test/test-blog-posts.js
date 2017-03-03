@@ -7,17 +7,12 @@ const mongoose = require('mongoose');
 // this module
 const should = chai.should();
 
-const {DATABASE_URL} = require('../config');
-const {BlogPost} = require('../models');
+const {BlogPost, User} = require('../models');
 const {closeServer, runServer, app} = require('../server');
 const {TEST_DATABASE_URL} = require('../config');
 
 chai.use(chaiHttp);
 
-// this function deletes the entire database.
-// we'll call it in an `afterEach` block below
-// to ensure  ata from one test does not stick
-// around for next one
 function tearDownDb() {
   return new Promise((resolve, reject) => {
     console.warn('Deleting database');
@@ -27,12 +22,24 @@ function tearDownDb() {
   });
 }
 
+let testuser;
 
-// used to put randomish documents in db
-// so we have data to work with and assert about.
-// we use the Faker library to automatically
-// generate placeholder values for author, title, content
-// and then we insert that data into mongo
+
+function seedUser(){
+ return User
+  .create({
+    username: "james",
+    textPassword: "james",
+    firstname: faker.name.firstName(),
+    lastname: faker.name.lastName(),
+    password: "$2a$10$H4owCwvXmpDLakvTHJsc0OVqyXU9Bf4cE6iBq/BrcyMvHmZ3hAusS"
+  })
+  .then(function(user){
+    testuser = user;
+  })
+}
+
+
 function seedBlogPostData() {
   console.info('seeding blog post data');
   const seedData = [];
@@ -46,7 +53,7 @@ function seedBlogPostData() {
       content: faker.lorem.text()
     });
   }
-  // this will return a promise
+  
   return BlogPost.insertMany(seedData);
 }
 
@@ -58,12 +65,12 @@ describe('blog posts API resource', function() {
   });
 
   beforeEach(function() {
+    seedUser();
     return seedBlogPostData();
   });
 
   afterEach(function() {
-    // tear down database so we ensure no state from this test
-    // effects any coming after.
+  
     return tearDownDb();
   });
 
@@ -71,37 +78,30 @@ describe('blog posts API resource', function() {
     return closeServer();
   });
 
-  // note the use of nested `describe` blocks.
-  // this allows us to make clearer, more discrete tests that focus
-  // on proving something small
   describe('GET endpoint', function() {
 
     it('should return all existing posts', function() {
-      // strategy:
-      //    1. get back all posts returned by by GET request to `/posts`
-      //    2. prove res has right status, data type
-      //    3. prove the number of posts we got back is equal to number
-      //       in db.
+    
       let res;
       return chai.request(app)
+
         .get('/posts')
         .then(_res => {
           res = _res;
           res.should.have.status(200);
-          // otherwise our db seeding didn't work
+          
           res.body.should.have.length.of.at.least(1);
 
           return BlogPost.count();
         })
         .then(count => {
-          // the number of returned posts should be same
-          // as number of posts in DB
+        
           res.body.should.have.length.of(count);
         });
     });
 
     it('should return posts with right fields', function() {
-      // Strategy: Get back all posts, and ensure they have expected keys
+     
 
       let resPost;
       return chai.request(app)
@@ -117,8 +117,7 @@ describe('blog posts API resource', function() {
             post.should.be.a('object');
             post.should.include.keys('id', 'title', 'content', 'author', 'created');
           });
-          // just check one of the posts that its values match with those in db
-          // and we'll assume it's true for rest
+       
           resPost = res.body[0];
           return BlogPost.findById(resPost.id).exec();
         })
@@ -130,11 +129,22 @@ describe('blog posts API resource', function() {
     });
   });
 
+
+
+
+
+
+
+
+//===========================This is it =============================================
+
+
+
+
+
+
   describe('POST endpoint', function() {
-    // strategy: make a POST request with data,
-    // then prove that the post we get back has
-    // right keys, and that `id` is there (which means
-    // the data was inserted into db)
+ 
     it('should add a new blog post', function() {
 
       const newPost = {
@@ -145,9 +155,10 @@ describe('blog posts API resource', function() {
           },
           content: faker.lorem.text()
       };
-
+      console.log(testuser.username, testuser.textPassword);
       return chai.request(app)
         .post('/posts')
+        .auth("james", "james")
         .send(newPost)
         .then(function(res) {
           res.should.have.status(201);
@@ -156,7 +167,6 @@ describe('blog posts API resource', function() {
           res.body.should.include.keys(
             'id', 'title', 'content', 'author', 'created');
           res.body.title.should.equal(newPost.title);
-          // cause Mongo should have created id on insertion
           res.body.id.should.not.be.null;
           res.body.author.should.equal(
             `${newPost.author.firstName} ${newPost.author.lastName}`);
@@ -166,19 +176,38 @@ describe('blog posts API resource', function() {
         .then(function(post) {
           post.title.should.equal(newPost.title);
           post.content.should.equal(newPost.content);
-          post.author.firstName.should.equal(newPost.author.firstName);
-          post.author.lastName.should.equal(newPost.author.lastName);
+            post.author.firstName.should.equal(newPost.author.firstName);
+            post.author.lastName.should.equal(newPost.author.lastName);
         });
     });
   });
 
-  describe('PUT endpoint', function() {
 
-    // strategy:
-    //  1. Get an existing post from db
-    //  2. Make a PUT request to update that post
-    //  3. Prove post returned by request contains data we sent
-    //  4. Prove post in db is correctly updated
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//==================================DELETE=======================================
+
+
+  describe.only('PUT endpoint', function() {
+
+   
     it('should update fields you send over', function() {
       const updateData = {
         title: 'cats cats cats',
@@ -197,6 +226,7 @@ describe('blog posts API resource', function() {
 
           return chai.request(app)
             .put(`/posts/${post.id}`)
+            .auth("james", "james")
             .send(updateData);
         })
         .then(res => {
@@ -218,6 +248,27 @@ describe('blog posts API resource', function() {
         });
     });
   });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   describe('DELETE endpoint', function() {
     // strategy:
